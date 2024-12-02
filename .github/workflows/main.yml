@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Enable RDP
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+      - name: Set Local User
+        run: |
+          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -String "Password123!" -AsPlainText -Force)
+
+      - name: Start RDP Service
+        run: |
+          Start-Service -Name "termservice"
+          Set-Service -Name "termservice" -StartupType Automatic
+
+      - name: Run RDP in Background
+        run: |
+          Start-Process -FilePath "C:\Windows\System32\mstsc.exe" -ArgumentList "/v:localhost"
+          Start-Sleep -s 10
+          Stop-Process -Name "mstsc"
